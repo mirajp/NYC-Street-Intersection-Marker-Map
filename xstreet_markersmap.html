@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+        <meta charset="utf-8">
+        <title>Fusion Tables layers</title>
+        <style>
+            html, body {
+				height: 100%;
+				margin: 0;
+				padding: 0;
+			}
+			#map {
+				position: absolute;
+				border: none;
+				height: 100%;
+				width: 100%;
+				left: 0%;
+				top: 0%;
+			}
+			.controls {
+				margin-top: 10px;
+				border: 1px solid transparent;
+				border-radius: 2px 0 0 2px;
+				box-sizing: border-box;
+				-moz-box-sizing: border-box;
+				height: 32px;
+				outline: none;
+				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+			}
+			#pac-input {
+				background-color: #fff;
+				font-family: Roboto;
+				font-size: 15px;
+				font-weight: 300;
+				margin-left: 12px;
+				padding: 0 11px 0 13px;
+				text-overflow: ellipsis;
+				width: 300px;
+			}
+			#pac-input:focus {
+				border-color: #4d90fe;
+			}
+			.pac-container {
+				font-family: Roboto;
+			}
+			#type-selector {
+				color: #fff;
+				background-color: #4d90fe;
+				padding: 5px 11px 0px 11px;
+			}
+			#type-selector label {
+				font-family: Roboto;
+				font-size: 13px;
+				font-weight: 300;
+			}
+			#target {
+				width: 345px;
+			}
+        </style>
+        <script src="lib/alasql.min.js"></script>
+    </head>
+    <body>
+        <input id="pac-input" class="controls" type="text" placeholder="Search Box">
+        <div id="map"></div>
+        <script>
+            var map, layer;
+            function initMap() {
+                loadMarkerLinks();
+                var myCenter = new google.maps.LatLng({lat: 40.782361, lng: -73.965784});
+				var mapOptions = {
+					zoom: 15,
+					minZoom: 6,
+					maxZoom: 19,
+					center: myCenter,
+					mapTypeId: google.maps.MapTypeId.ROADMAP
+				};
+				map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+                layer = new google.maps.FusionTablesLayer({
+                    heatmap: { enabled: false},
+                    query: {
+                        select: '\'Latitude\'',
+                        from: '10TTGvPKxgvPZmj6fZ-aHH91FVQ_WcBFJJlH10gFq'
+                    },
+                    options: {
+                        styleId: 4,
+                        templateId: 6
+                    }
+                });
+                layer.setMap(map);
+                
+                google.maps.event.addListener(layer, 'click', function(event) {
+                    var pointLat = (event.row.Latitude.value);
+                    var pointLng = (event.row.Longitude.value);
+                    
+                    var intersectionData = alasql("SELECT Intersection,GoogleSearchLink FROM markerdata WHERE Latitude == " + pointLat + " AND Longitude == " + pointLng);
+                    
+                    if (intersectionData.length > 0) {
+                        // Show the first result's links
+                        var title = intersectionData[0]['Intersection'];
+                        var link = intersectionData[0]['GoogleSearchLink'];
+                        
+                        var text = "<b>" + title + "</b><pre>";
+                        text += "<a href=\"" + link + "\" target=\"_blank\">Google search link</a><br></pre>";
+                        event.infoWindowHtml = (text);
+                    }
+                    else {
+                        console.log("No data found for (" + pointLat + ", " + pointLng + ")");
+                    }
+                });
+                
+                initSearchBox();
+            }
+            
+            function initSearchBox() {
+				// Create the search box and link it to the UI element.
+				var input = document.getElementById('pac-input');
+				var searchBox = new google.maps.places.SearchBox(input);
+				map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+				
+				
+				// Listen for the event fired when the user selects a prediction and retrieve
+				// more details for that place.
+				searchBox.addListener('places_changed', function() {
+					var places = searchBox.getPlaces();
+					
+					if (places.length == 0) {
+						return;
+					}
+					
+					// For each place, get the icon, name and location.
+					var bounds = new google.maps.LatLngBounds();
+					
+					// Try to go to the an intersection if possible
+					for (var i = 0; i < places.length; i++) {
+						var placeFound = places[i];
+						if (placeFound.geometry && placeFound.types[0] == "intersection") {
+							map.setCenter(placeFound.geometry.location);
+							map.setZoom(18);
+							return;
+						}
+					}
+					
+					// Else the first result with coordinates
+					for (var i = 0; i < places.length; i++) {
+						var placeFound = places[i];
+						if (placeFound.geometry) {
+							map.setCenter(placeFound.geometry.location);
+							map.setZoom(18);
+							return;
+						}
+					}
+				});
+			}
+            
+            function loadMarkerLinks() {
+				//var csvUrl = 'http://server/intersectionlatlngs.csv';
+				var csvUrl = 'intersectionlatlngs.csv';
+				var sqlSelectStr;
+                alasql("CREATE TABLE markerdata (Borough STRING, GoogleSearchLink, Intersection STRING, Latitude FLOAT, Longitude FLOAT)");
+                console.log("Initial load for all the data for the markers...");
+				
+				sqlSelectStr = 'SELECT * FROM CSV("'+csvUrl+'",{headers:true})';
+				alasql(sqlSelectStr, [], function(data) {
+					console.log("intersectionlatlngs.csv shows " + data.length + " marker data points.");
+					//headers = ['Borough','Intersection','GoogleSearchLink','Latitude','Longitude'];
+					alasql("INSERT INTO markerdata SELECT * FROM ?",[data]);
+				});
+			}
+        </script>
+        <script async defer
+            src="https://maps.googleapis.com/maps/api/js?&libraries=visualization,places&callback=initMap">
+        </script>
+    </body>
+</html>
