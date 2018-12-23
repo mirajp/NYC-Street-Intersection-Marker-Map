@@ -1,0 +1,29 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#map {
+    position: absolute;
+    border: none;
+    height: 100%;
+    width: 100%;
+    left: 0%;
+    top: 0%;
+}
+
+.custom-infobox {
+    background-color: white;
+    color: black;
+    border-radius: 5px;
+    padding: 5px;
+    font-size:14px;
+    pointer-events:auto !important;
+}
+
+.custom-infobox .title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
