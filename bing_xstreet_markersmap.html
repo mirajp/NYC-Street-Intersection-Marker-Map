@@ -8,9 +8,12 @@
 		<script src="lib/bingMapsSrcWithKeyImport.js"></script>
     </head>
     <body>
-		<script src="lib/sql.js"></script>
-		<script src="lib/bingApp.js"></script>
-
-		<div id="map"></div>
+        <div id="searchbox-container">
+            <input type="text" id="searchbox" placeholder="Enter an address"/>
+        </div>
+        
+        <div id="map" onclick="closeInfobox"></div>
+        
+        <script src="lib/bingApp.js"></script>
     </body>
 </html>
